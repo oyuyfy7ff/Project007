@@ -3,74 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>คิดถึงพ่อ</title>
+    <title>คิดถึงพ่อมาก</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@200;400;600&display=swap" rel="stylesheet">
     <style>
-        :root { --p-pink: #ff8fa3; --s-pink: #fff0f3; --accent: #ff4d6d; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Prompt', sans-serif; background: var(--s-pink); margin: 0; color: #592d38; }
+        :root { --p-pink: #ff8fa3; --s-pink: #fff0f3; --accent: #ff4d6d; --glass: rgba(255, 255, 255, 0.85); }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Prompt', sans-serif; background: var(--s-pink); margin: 0; color: #592d38; overflow-x: hidden; min-height: 100vh; }
+        
+        /* ระบบซากุระร่วง (Canvas เดิมเป๊ะ) */
         #canvas-sakura { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-        .wrapper { position: relative; z-index: 2; max-width: 800px; margin: 0 auto; padding: 30px 15px; }
-        .header { background: rgba(255, 255, 255, 0.9); padding: 30px; border-radius: 25px; text-align: center; margin-bottom: 30px; border: 1px solid #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        h1 { margin: 0; color: var(--accent); font-size: 1.8rem; }
-        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
-        .item { background: #fff; border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .item img { width: 100%; height: 280px; object-fit: cover; display: block; }
-        .item-info { padding: 12px; font-size: 0.9rem; border-top: 1px solid #f0f0f0; }
-        .name-tag { color: var(--accent); font-weight: 600; }
+
+        .main-wrapper { position: relative; z-index: 2; max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 40px rgba(255, 143, 163, 0.1);
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 { font-weight: 600; font-size: 2.2rem; color: var(--accent); margin: 0; letter-spacing: -1px; }
+        .quote { font-weight: 200; opacity: 0.7; margin-top: 10px; }
+
+        /* โซนแนะนำ (แทนที่ปุ่มอัปโหลดที่พัง) */
+        .info-zone {
+            margin-top: 30px;
+            border: 2px dashed var(--p-pink);
+            border-radius: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+        }
+
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+
+        .card {
+            position: relative;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+        .card:hover { transform: translateY(-5px); }
+        .card img { width: 100%; height: 300px; object-fit: cover; display: block; }
+
+        /* ปุ่มดาวน์โหลด (ฟังก์ชันเดิม) */
+        .btn-download {
+            position: absolute;
+            bottom: 15px; right: 15px;
+            background: var(--accent);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(255, 77, 109, 0.3);
+        }
     </style>
 </head>
 <body>
+
     <canvas id="canvas-sakura"></canvas>
-    <div class="wrapper">
-        <div class="header">
-            <h1>รักพ่อมาก</h1>
-            <p style="opacity:0.6;font-size:0.9rem">คิดถึงพ่อมาก</p>
+
+    <div class="main-wrapper">
+        <div class="glass-panel">
+            <h1>บันทึกความทรงจำคุณพ่อ</h1>
+            <div class="quote">ความรักจะคงอยู่ตลอดไปในทุกรูปภาพ</div>
+            
+            <div class="info-zone">
+                <p><b>สถานะคลังรูปภาพ:</b> ออนไลน์ (ดึงข้อมูลจาก GitHub โดยตรง)</p>
+                <small>เพิ่มรูปใหม่ได้โดยการ Upload เข้าหน้าแรกของ Project007</small>
+            </div>
         </div>
-        <div class="gallery" id="gallery"></div>
+
+        <div class="gallery-grid" id="gallery"></div>
     </div>
 
     <script>
-        const cvs = document.getElementById('canvas-sakura');
-        const ctx = cvs.getContext('2d');
-        let pts = [];
-        const resize = () => { cvs.width = window.innerWidth; cvs.height = window.innerHeight; };
+        // 1. ระบบซากุระร่วง (Canvas Engine เดิม)
+        const canvas = document.getElementById('canvas-sakura');
+        const ctx = canvas.getContext('2d');
+        let petals = [];
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize); resize();
-        class P {
-            constructor() { this.x = Math.random()*cvs.width; this.y = Math.random()*cvs.height-cvs.height; this.sz = Math.random()*6+4; this.sp = Math.random()*2+1; this.a = Math.random()*360; }
-            draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.a*Math.PI/180); ctx.beginPath(); ctx.ellipse(0,0,this.sz,this.sz/2,0,0,Math.PI*2); ctx.fillStyle='#ffb7c5'; ctx.fill(); ctx.restore(); }
-            update() { this.y+=this.sp; this.a+=0.05; if(this.y>cvs.height){ this.y=-10; this.x=Math.random()*cvs.width; } }
-        }
-        for(let i=0; i<35; i++) pts.push(new P());
-        function anim() { ctx.clearRect(0,0,cvs.width,cvs.height); pts.forEach(p=>{p.update();p.draw();}); requestAnimationFrame(anim); }
-        anim();
 
-        async function getPhotos() {
-            const user = 'oyuyfy7ff';
-            const repo = 'Project007';
-            const g = document.getElementById('gallery');
+        class Petal {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height - canvas.height;
+                this.size = Math.random() * 7 + 5;
+                this.speed = Math.random() * 2 + 1;
+                this.angle = Math.random() * 360;
+                this.spin = Math.random() * 0.2 - 0.1;
+                this.wind = Math.random() * 1 - 0.5;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle * Math.PI / 180);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.size, this.size/2, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffb7c5';
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                this.y += this.speed;
+                this.x += this.wind;
+                this.angle += this.spin;
+                if (this.y > canvas.height) { this.y = -10; this.x = Math.random() * canvas.width; }
+            }
+        }
+        for (let i = 0; i < 45; i++) petals.push(new Petal());
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            petals.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // 2. ระบบดึงรูปอัตโนมัติ (แทนที่ Firebase)
+        const user = 'oyuyfy7ff';
+        const repo = 'Project007';
+
+        async function loadPhotos() {
+            const gallery = document.getElementById('gallery');
             try {
-                const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/images`);
-                const data = await res.json();
-                if(!Array.isArray(data)) return;
-                data.reverse().forEach(f => {
-                    if(f.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
-                        const splitName = f.name.split('-');
-                        const uploader = splitName.length > 1 ? decodeURIComponent(splitName[0]) : "คิดถึงพ่อมากๆ";
-                        const note = splitName.length > 1 ? decodeURIComponent(splitName[1].split('.')[0]) : "";
-                        g.innerHTML += `
-                            <div class="item">
-                                <img src="${f.download_url}" loading="lazy">
-                                <div class="item-info">
-                                    <span class="name-tag">โดย: ${uploader}</span><br>
-                                    <span style="font-size:0.8rem; opacity:0.7">${note}</span>
-                                </div>
+                const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/`);
+                const files = await res.json();
+                
+                files.reverse().forEach(file => {
+                    // กรองเฉพาะไฟล์รูปภาพที่พี่อัปโหลดไว้
+                    if (file.name.match(/\.(jpg|jpeg|png|webp|jfif)$/i)) {
+                        const card = `
+                            <div class="card">
+                                <img src="${file.download_url}" loading="lazy">
+                                <a href="${file.download_url}" target="_blank" download class="btn-download">ดาวน์โหลด</a>
                             </div>`;
+                        gallery.innerHTML += card;
                     }
                 });
-            } catch(e) { console.log("Error or No images"); }
+            } catch (e) { console.error("Error loading photos"); }
         }
-        getPhotos();
+        loadPhotos();
     </script>
 </body>
 </html>
